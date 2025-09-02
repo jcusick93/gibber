@@ -1,16 +1,30 @@
-import { BodyView } from "@/components/Body/BodyView";
-import { StyledText } from "@/components/Text/StyledText";
-
 import { SearchField } from "@/components/SearchField";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { AnimatedText } from "@/components/Text/AnimatedText";
+import { Term } from "@/constants/terms";
+import { useFonts } from "expo-font";
+import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
+import { SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
 
 export default function HomeScreen() {
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState<Term | null>(null);
+
+  const handleTermSelect = (term: Term) => {
+    setSelectedTerm(term);
+  };
+
+  if (!loaded) {
+    return null;
+  }
+
   return (
-    <BodyView>
-      {/* <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoidingView}
-      > */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "black" }}>
+      <StatusBar style="auto" />
 
       {/* header */}
       <View
@@ -19,13 +33,18 @@ export default function HomeScreen() {
           top: 0,
           left: 0,
           right: 0,
-          padding: 16,
-          zIndex: 9,
+          paddingTop: 16,
+          zIndex: 999,
           backgroundColor: "rgba(0,0,0,.9)",
           backdropFilter: "blur(100px)",
         }}
       >
-        <SearchField placeholder="Search a term..." />
+        <SearchField
+          placeholder="Search a term..."
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          onTermSelect={handleTermSelect}
+        />
       </View>
 
       <ScrollView
@@ -34,47 +53,52 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <StyledText variant="display">Bussin</StyledText>
-        <StyledText variant="body-large">
-          This refers to the act of pressing the tongue against the roof of the
-          mouth to define the jawline. Originally popularized as a facial
-          exercise, it's now a meme where people "mew" in photos to look their
-          best. This refers to the act of pressing the tongue against the roof
-          of the mouth to define the jawline. Originally popularized as a facial
-          exercise, it's now a meme where people "mew" in photos to look their
-          best.
-        </StyledText>
+        {selectedTerm && (
+          <>
+            <AnimatedText
+              text={selectedTerm.term}
+              style={styles.titleText}
+              duration={500}
+              delay={25}
+            />
+            <AnimatedText
+              text={selectedTerm.definition}
+              style={styles.definitionText}
+              duration={450}
+              delay={20}
+            />
+          </>
+        )}
       </ScrollView>
-      {/* </KeyboardAvoidingView> */}
-    </BodyView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
   scrollView: {
     flex: 1,
     paddingTop: 172, // Scroll bar appears under header
     paddingBottom: 32,
   },
-  scrollContent: {},
-  textInput: {
-    height: 40,
-    backgroundColor: "blue",
-    paddingHorizontal: 12,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  title: {
+  titleText: {
+    fontSize: 48,
+    lineHeight: 58,
+    color: "rgba(255, 255, 255, 1)",
+    fontFamily: "System",
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    marginBottom: 16,
+  },
+  definitionText: {
     fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
+    lineHeight: 36,
+    color: "rgba(255, 255, 255, 0.8)",
+    fontFamily: "System",
+    fontWeight: "300",
+    letterSpacing: -0.4,
   },
 });

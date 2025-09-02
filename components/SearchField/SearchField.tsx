@@ -1,7 +1,10 @@
+import { searchTerms, Term } from "@/constants/terms";
 import { tokens } from "@/constants/tokens";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Animated,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,23 +15,49 @@ import {
 interface SearchFieldProps {
   value?: string;
   onChangeText?: (text: string) => void;
+  onTermSelect?: (term: Term) => void;
   placeholder?: string;
-  suggestions?: string[];
-  onSuggestionPress?: (suggestion: string) => void;
 }
 
 export const SearchField: React.FC<SearchFieldProps> = ({
   value: controlledValue,
   onChangeText,
+  onTermSelect,
   placeholder = "Type something...",
-  suggestions = ["Bussin'", "Hype", "Mogging"],
-  onSuggestionPress,
 }) => {
   const [internalValue, setInternalValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<Term[]>([]);
+  const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
+  const [pillAnimations, setPillAnimations] = useState<Animated.Value[]>([]);
 
   // Use controlled value if provided, otherwise use internal state
   const value = controlledValue !== undefined ? controlledValue : internalValue;
+
+  // Update suggestions when value changes, filtering out selected term
+  useEffect(() => {
+    const filteredTerms = searchTerms(value);
+    const filteredSuggestions = filteredTerms.filter(
+      (term) => term.id !== selectedTermId
+    );
+    setSuggestions(filteredSuggestions.slice(0, 12)); // Limit to 12 suggestions
+  }, [value, selectedTermId]);
+
+  // Create animations for pills when suggestions change
+  useEffect(() => {
+    const newAnimations = suggestions.map(() => new Animated.Value(0));
+    setPillAnimations(newAnimations);
+
+    // Animate pills in with stagger
+    newAnimations.forEach((animation, index) => {
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 200,
+        delay: index * 50, // 80ms stagger for subtle overlap
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [suggestions.length]);
 
   const handleTextChange = (text: string) => {
     if (controlledValue !== undefined) {
@@ -40,15 +69,22 @@ export const SearchField: React.FC<SearchFieldProps> = ({
     }
   };
 
-  const handleSuggestionPress = (suggestion: string) => {
+  const handleSuggestionPress = (term: Term) => {
+    const termText = term.term;
+
     if (controlledValue !== undefined) {
       // Controlled mode - call parent's onChangeText
-      onChangeText?.(suggestion);
+      onChangeText?.(termText);
     } else {
       // Uncontrolled mode - update internal state
-      setInternalValue(suggestion);
+      setInternalValue(termText);
     }
-    onSuggestionPress?.(suggestion);
+
+    // Set the selected term ID to filter it out
+    setSelectedTermId(term.id);
+
+    // Notify parent of term selection
+    onTermSelect?.(term);
   };
 
   const handleClear = () => {
@@ -59,6 +95,9 @@ export const SearchField: React.FC<SearchFieldProps> = ({
       // Uncontrolled mode - update internal state
       setInternalValue("");
     }
+
+    // Clear the selected term when clearing input
+    setSelectedTermId(null);
   };
 
   return (
@@ -93,22 +132,55 @@ export const SearchField: React.FC<SearchFieldProps> = ({
             </TouchableOpacity>
           )}
         </View>
+        {/* Bottom border */}
+        <View style={styles.inputBorder} />
       </View>
 
-      {/* Suggestions Section */}
+      {/* Suggestions Section - Always show title */}
       <View style={styles.suggestionsContainer}>
         <Text style={styles.suggestionsTitle}>SUGGESTIONS</Text>
-        <View style={styles.suggestionsList}>
-          {suggestions.map((suggestion, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.suggestionPill}
-              onPress={() => handleSuggestionPress(suggestion)}
-            >
-              <Text style={styles.suggestionText}>{suggestion}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {suggestions.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.suggestionsScrollContent}
+            style={styles.suggestionsScrollView}
+          >
+            {suggestions.map((term, index) => {
+              const animation = pillAnimations[index];
+              if (!animation) return null;
+
+              const animatedStyle = {
+                opacity: animation,
+                transform: [
+                  {
+                    scale: animation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  },
+                  {
+                    translateY: animation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0],
+                    }),
+                  },
+                ],
+              };
+
+              return (
+                <Animated.View key={term.id} style={animatedStyle}>
+                  <TouchableOpacity
+                    style={styles.suggestionPill}
+                    onPress={() => handleSuggestionPress(term)}
+                  >
+                    <Text style={styles.suggestionText}>{term.term}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
     </View>
   );
@@ -120,30 +192,34 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   inputContainer: {
+    height: 56,
     justifyContent: "flex-start",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: tokens.color.border.lowContrast,
+    paddingBottom: 4,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   textInput: {
-    fontSize: tokens.text.input.fontSize,
-    lineHeight: tokens.text.input.lineHeight,
-    color: tokens.color.text.highContrast,
-    fontWeight: tokens.text.input.fontWeight as any,
-    fontFamily: "System",
+    fontSize: 32,
+    lineHeight: 40,
     flex: 1,
     letterSpacing: -0.43,
-
+    fontFamily: "System",
+    fontWeight: "400",
+    color: tokens.color.text.highContrast,
     padding: 0,
     margin: 0,
-    paddingTop: 12,
-    paddingBottom: 12,
+    textAlignVertical: "center",
   },
-
+  inputBorder: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 0.33,
+    backgroundColor: "rgba(84, 84, 86, 0.6)",
+  },
   suggestionsContainer: {
     gap: 16,
   },
@@ -154,11 +230,15 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
     lineHeight: 19.2,
   },
-  suggestionsList: {
+  suggestionsScrollView: {
+    flexGrow: 0,
+    marginRight: -16, // Bleed off the right side
+  },
+  suggestionsScrollContent: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
     alignItems: "center",
+    paddingRight: 32, // Extra padding to account for the bleed
   },
   suggestionPill: {
     backgroundColor: "rgba(120, 120, 128, 0.24)",
@@ -167,6 +247,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0, // Prevent pills from shrinking
   },
   suggestionText: {
     fontSize: 15,
