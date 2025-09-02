@@ -1,7 +1,8 @@
 import { BodyView } from "@/components/Body/BodyView";
 import { StyledText } from "@/components/Text/StyledText";
 
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { SearchField } from "@/components/SearchField";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 export default function HomeScreen() {
   return (
@@ -20,18 +21,15 @@ export default function HomeScreen() {
           right: 0,
           padding: 16,
           zIndex: 9,
-          backgroundColor: "rgba(0,0,0,.7)",
+          backgroundColor: "rgba(0,0,0,.9)",
           backdropFilter: "blur(100px)",
         }}
       >
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter text here..."
-          placeholderTextColor="#999"
-        />
+        <SearchField placeholder="Search a term..." />
       </View>
 
       <ScrollView
+        showsVerticalScrollIndicator={false}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -61,12 +59,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingTop: 96,
+    paddingTop: 172, // Scroll bar appears under header
     paddingBottom: 32,
   },
-  scrollContent: {
-    paddingBottom: 20,
-  },
+  scrollContent: {},
   textInput: {
     height: 40,
     backgroundColor: "blue",

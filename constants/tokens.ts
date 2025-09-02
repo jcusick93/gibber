@@ -13,7 +13,13 @@ export const tokens = {
       letterSpacing: 0.4,
     },
     overline: {},
-    input: {},
+    input: {
+      fontFamily: "System",
+      fontSize: 32,
+      fontWeight: 400,
+      lineHeight: 40,
+      letterSpacing: -0.4,
+    },
     bodyLarge: {
       fontFamily: "System", // SF Pro on iOS
       fontSize: 24,
@@ -30,6 +36,9 @@ export const tokens = {
       mediumContrast: "rgba(255, 255, 255, 0.8)",
       lowContrast: "rgba(255, 255, 255, 0.5)",
       placeholder: "rgba(255, 255, 255, 0.3)",
+    },
+    border: {
+      lowContrast: "rgba(255, 255, 255, 0.2)",
     },
   },
 };

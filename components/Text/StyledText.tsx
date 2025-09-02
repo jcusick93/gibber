@@ -29,7 +29,11 @@ const variantStyles = StyleSheet.create({
     letterSpacing: tokens.text.display.letterSpacing,
   },
   input: {
-    fontSize: 16,
+    color: tokens.color.text.highContrast,
+    fontFamily: tokens.text.input.fontFamily,
+    lineHeight: tokens.text.input.lineHeight,
+    fontWeight: tokens.text.input.fontWeight as any,
+    fontSize: tokens.text.input.fontSize,
   },
   overline: {
     fontSize: 12,
