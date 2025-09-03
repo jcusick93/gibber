@@ -4,7 +4,13 @@ import { StyleSheet, Text, TextProps } from "react-native";
 // props for the StyledText
 interface StyledTextProps extends TextProps {
   children: React.ReactNode;
-  variant?: "display" | "input" | "overline" | "body-small" | "body-large";
+  variant?:
+    | "display"
+    | "input"
+    | "overline"
+    | "bodySmall"
+    | "bodyLarge"
+    | "action";
 }
 
 export const StyledText: React.FC<StyledTextProps> = ({
@@ -16,41 +22,44 @@ export const StyledText: React.FC<StyledTextProps> = ({
     ? variantStyles[variant as keyof typeof variantStyles]
     : {};
 
-  return <Text style={variantStyle}>{children}</Text>;
+  return (
+    <Text style={variantStyle} {...rest}>
+      {children}
+    </Text>
+  );
 };
 
 const variantStyles = StyleSheet.create({
   display: {
-    color: tokens.color.text.highContrast,
+    color: tokens.color.text.secondary,
     fontSize: tokens.text.display.fontSize,
     fontFamily: tokens.text.display.fontFamily,
     lineHeight: tokens.text.display.lineHeight,
-    fontWeight: tokens.text.display.fontWeight as any,
     letterSpacing: tokens.text.display.letterSpacing,
   },
   input: {
-    color: tokens.color.text.highContrast,
+    color: tokens.color.text.primary,
     fontFamily: tokens.text.input.fontFamily,
     lineHeight: tokens.text.input.lineHeight,
     fontWeight: tokens.text.input.fontWeight as any,
     fontSize: tokens.text.input.fontSize,
   },
   overline: {
-    fontSize: 12,
-    fontWeight: "500",
-    textTransform: "uppercase",
+    fontFamily: tokens.text.overline.fontFamily,
+    fontSize: tokens.text.overline.fontSize,
+    lineHeight: tokens.text.overline.lineHeight,
+    color: tokens.color.text.primary,
+    letterSpacing: tokens.text.overline.letterSpacing,
   },
-  "body-small": {
-    fontSize: 14,
+  bodySmall: {
+    fontSize: tokens.text.bodySmall.fontSize,
+    fontFamily: tokens.text.bodySmall.fontFamily,
     color: tokens.color.text.highContrast,
-    fontWeight: "normal",
   },
-  "body-large": {
+  bodyLarge: {
     color: tokens.color.text.highContrast,
     fontSize: tokens.text.bodyLarge.fontSize,
     fontFamily: tokens.text.bodyLarge.fontFamily,
     lineHeight: tokens.text.bodyLarge.lineHeight,
-    fontWeight: tokens.text.bodyLarge.fontWeight as any,
-    letterSpacing: tokens.text.bodyLarge.letterSpacing,
   },
 });

@@ -1,6 +1,8 @@
 import { searchTerms, Term } from "@/constants/terms";
 import { tokens } from "@/constants/tokens";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
 import {
   Animated,
@@ -11,12 +13,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { StyledText } from "../Text/StyledText";
+
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 interface SearchFieldProps {
   value?: string;
   onChangeText?: (text: string) => void;
   onTermSelect?: (term: Term) => void;
   placeholder?: string;
+  selectedTermId?: string | null; // Add this prop
 }
 
 export const SearchField: React.FC<SearchFieldProps> = ({
@@ -24,6 +30,7 @@ export const SearchField: React.FC<SearchFieldProps> = ({
   onChangeText,
   onTermSelect,
   placeholder = "Type something...",
+  selectedTermId: externalSelectedTermId, // Add this parameter
 }) => {
   const [internalValue, setInternalValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -34,14 +41,24 @@ export const SearchField: React.FC<SearchFieldProps> = ({
   // Use controlled value if provided, otherwise use internal state
   const value = controlledValue !== undefined ? controlledValue : internalValue;
 
+  // Use external selectedTermId if provided, otherwise use internal state
+  const currentSelectedTermId =
+    externalSelectedTermId !== undefined
+      ? externalSelectedTermId
+      : selectedTermId;
+
   // Update suggestions when value changes, filtering out selected term
   useEffect(() => {
     const filteredTerms = searchTerms(value);
     const filteredSuggestions = filteredTerms.filter(
-      (term) => term.id !== selectedTermId
+      (term) => term.id !== currentSelectedTermId // Use the current selected term ID
     );
-    setSuggestions(filteredSuggestions.slice(0, 12)); // Limit to 12 suggestions
-  }, [value, selectedTermId]);
+    // Sort alphabetically by term name
+    const sortedSuggestions = filteredSuggestions.sort((a, b) =>
+      a.term.toLowerCase().localeCompare(b.term.toLowerCase())
+    );
+    setSuggestions(sortedSuggestions.slice(0, 12)); // Limit to 12 suggestions
+  }, [value, currentSelectedTermId]); // Update dependency
 
   // Create animations for pills when suggestions change
   useEffect(() => {
@@ -70,6 +87,10 @@ export const SearchField: React.FC<SearchFieldProps> = ({
   };
 
   const handleSuggestionPress = (term: Term) => {
+    // Add haptic feedback
+    Haptics.selectionAsync(); // The "click" when selecting
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // The "thud" when confirming
+
     const termText = term.term;
 
     if (controlledValue !== undefined) {
@@ -98,6 +119,7 @@ export const SearchField: React.FC<SearchFieldProps> = ({
 
     // Clear the selected term when clearing input
     setSelectedTermId(null);
+    Haptics.selectionAsync();
   };
 
   return (
@@ -110,11 +132,11 @@ export const SearchField: React.FC<SearchFieldProps> = ({
             value={value}
             onChangeText={handleTextChange}
             placeholder={placeholder}
-            placeholderTextColor={tokens.color.text.placeholder}
+            placeholderTextColor={tokens.color.text.primary}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             multiline={false}
-            autoCapitalize="none"
+            autoCapitalize="sentences"
             autoCorrect={false}
           />
           {/* Clear button with Expo icon */}
@@ -138,7 +160,8 @@ export const SearchField: React.FC<SearchFieldProps> = ({
 
       {/* Suggestions Section - Always show title */}
       <View style={styles.suggestionsContainer}>
-        <Text style={styles.suggestionsTitle}>SUGGESTIONS</Text>
+        {/* <Text style={styles.suggestionsTitle}>SUGGESTIONS</Text> */}
+        <StyledText variant="overline">Suggestions</StyledText>
         {suggestions.length > 0 && (
           <ScrollView
             horizontal
@@ -169,14 +192,28 @@ export const SearchField: React.FC<SearchFieldProps> = ({
               };
 
               return (
-                <Animated.View key={term.id} style={animatedStyle}>
+                // chips
+                <AnimatedBlurView
+                  key={term.id}
+                  style={{
+                    backgroundColor: tokens.color.background.darken,
+                    overflow: "hidden",
+                    borderRadius: 8,
+                    padding: 4,
+                    filter: "blur(2px)",
+                    backdropFilter: "blur(2px)",
+                    ...animatedStyle,
+                  }}
+                  intensity={50}
+                  tint="dark"
+                >
                   <TouchableOpacity
                     style={styles.suggestionPill}
                     onPress={() => handleSuggestionPress(term)}
                   >
                     <Text style={styles.suggestionText}>{term.term}</Text>
                   </TouchableOpacity>
-                </Animated.View>
+                </AnimatedBlurView>
               );
             })}
           </ScrollView>
@@ -201,16 +238,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   textInput: {
-    fontSize: 32,
-    lineHeight: 40,
+    fontFamily: tokens.text.input.fontFamily,
+    fontSize: tokens.text.input.fontSize,
+    fontWeight: tokens.text.input.fontWeight as any,
+    color: tokens.color.text.primary,
     flex: 1,
-    letterSpacing: -0.43,
-    fontFamily: "System",
-    fontWeight: "400",
-    color: tokens.color.text.highContrast,
     padding: 0,
     margin: 0,
     textAlignVertical: "center",
+    includeFontPadding: false,
   },
   inputBorder: {
     position: "absolute",
@@ -218,21 +254,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 0.33,
-    backgroundColor: "rgba(84, 84, 86, 0.6)",
+    backgroundColor: tokens.color.border.primary,
   },
   suggestionsContainer: {
     gap: 16,
   },
-  suggestionsTitle: {
-    fontSize: 16,
-    fontFamily: "System",
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.7)",
-    lineHeight: 19.2,
-  },
+
   suggestionsScrollView: {
     flexGrow: 0,
-    marginRight: -16, // Bleed off the right side
+    paddingHorizontal: 16,
+    marginHorizontal: -16,
   },
   suggestionsScrollContent: {
     flexDirection: "row",
@@ -241,7 +272,7 @@ const styles = StyleSheet.create({
     paddingRight: 32, // Extra padding to account for the bleed
   },
   suggestionPill: {
-    backgroundColor: "rgba(120, 120, 128, 0.24)",
+    // backgroundColor: "rgba(120, 120, 128, 0.24)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 40,

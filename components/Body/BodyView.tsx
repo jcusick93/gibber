@@ -1,3 +1,4 @@
+import { tokens } from "@/constants/tokens";
 import { SafeAreaView, StyleSheet, View } from "react-native";
 
 interface BodyViewProps {
@@ -15,6 +16,7 @@ export const BodyView: React.FC<BodyViewProps> = ({ children }) => {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
+    backgroundColor: tokens.color.background.app,
   },
   body: {
     flex: 1,

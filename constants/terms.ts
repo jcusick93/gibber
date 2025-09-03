@@ -10,7 +10,7 @@ export const terms: Term[] = [
     id: "bussin",
     term: "Bussin'",
     definition:
-      'This refers to the act of pressing the tongue against the roof of the mouth to define the jawline. Originally popularized as a facial exercise, it\'s now a meme where people "mew" in photos to look their best.',
+      "Something is exceptionally good, delicious, or impressive, often used to describe food, but also applicable to music, fashion, or other experiences.",
     category: "slang",
   },
   {

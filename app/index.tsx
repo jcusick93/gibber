@@ -1,18 +1,30 @@
+import { BodyView } from "@/components/Body/BodyView";
+import { Header } from "@/components/Header/Header";
 import { SearchField } from "@/components/SearchField";
 import { AnimatedText } from "@/components/Text/AnimatedText";
-import { Term } from "@/constants/terms";
+import { fontConfig } from "@/constants/fonts";
+import { Term, terms } from "@/constants/terms";
+import { tokens } from "@/constants/tokens";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 export default function HomeScreen() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    ...fontConfig,
   });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTerm, setSelectedTerm] = useState<Term | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Load a random default term when component mounts
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * terms.length);
+    setSelectedTerm(terms[randomIndex]);
+  }, []);
 
   const handleTermSelect = (term: Term) => {
     setSelectedTerm(term);
@@ -23,20 +35,13 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "black" }}>
+    <BodyView>
       <StatusBar style="auto" />
 
       {/* header */}
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          paddingTop: 16,
-          zIndex: 999,
-          backgroundColor: "rgba(0,0,0,.9)",
-          backdropFilter: "blur(100px)",
+      <Header
+        onHeightChange={(height) => {
+          setHeaderHeight(height);
         }}
       >
         <SearchField
@@ -44,55 +49,57 @@ export default function HomeScreen() {
           value={searchTerm}
           onChangeText={setSearchTerm}
           onTermSelect={handleTermSelect}
+          selectedTermId={selectedTerm?.id}
         />
-      </View>
+      </Header>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { marginTop: headerHeight - 8 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {selectedTerm && (
-          <>
+          <View
+            style={{
+              backgroundColor: tokens.color.background.container,
+              padding: 16,
+              borderRadius: 24,
+            }}
+          >
             <AnimatedText
-              text={selectedTerm.term}
-              style={styles.titleText}
+              variant="display"
               duration={500}
-              delay={25}
-            />
+              delay={50}
+              key={`term-${selectedTerm.id}`}
+            >
+              {selectedTerm.term}
+            </AnimatedText>
             <AnimatedText
-              text={selectedTerm.definition}
-              style={styles.definitionText}
-              duration={450}
-              delay={20}
-            />
-          </>
+              duration={500}
+              delay={100}
+              key={`definition-${selectedTerm.id}`}
+            >
+              {selectedTerm.definition}
+            </AnimatedText>
+          </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </BodyView>
   );
 }
 
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
-    paddingTop: 172, // Scroll bar appears under header
-    paddingBottom: 32,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
   },
-  titleText: {
-    fontSize: 48,
-    lineHeight: 58,
-    color: "rgba(255, 255, 255, 1)",
-    fontFamily: "System",
-    fontWeight: "800",
-    letterSpacing: 0.4,
-    marginBottom: 16,
-  },
+
   definitionText: {
     fontSize: 24,
     lineHeight: 36,
