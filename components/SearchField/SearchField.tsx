@@ -1,14 +1,14 @@
-import { searchTerms, Term } from "@/constants/terms";
+import { searchTerms, Term, terms } from "@/constants/terms";
 import { tokens } from "@/constants/tokens";
-import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
+import { XCircleIcon } from "phosphor-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -37,6 +37,17 @@ export const SearchField: React.FC<SearchFieldProps> = ({
   const [suggestions, setSuggestions] = useState<Term[]>([]);
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
   const [pillAnimations, setPillAnimations] = useState<Animated.Value[]>([]);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Memoize animation config to prevent recreation on every render
+  const animationConfig = useMemo(
+    () => ({
+      duration: 300,
+      delay: 50,
+      easing: Easing.out(Easing.cubic),
+    }),
+    []
+  );
 
   // Use controlled value if provided, otherwise use internal state
   const value = controlledValue !== undefined ? controlledValue : internalValue;
@@ -49,32 +60,87 @@ export const SearchField: React.FC<SearchFieldProps> = ({
 
   // Update suggestions when value changes, filtering out selected term
   useEffect(() => {
-    const filteredTerms = searchTerms(value);
-    const filteredSuggestions = filteredTerms.filter(
-      (term) => term.id !== currentSelectedTermId // Use the current selected term ID
-    );
-    // Sort alphabetically by term name
-    const sortedSuggestions = filteredSuggestions.sort((a, b) =>
-      a.term.toLowerCase().localeCompare(b.term.toLowerCase())
-    );
-    setSuggestions(sortedSuggestions.slice(0, 12)); // Limit to 12 suggestions
-  }, [value, currentSelectedTermId]); // Update dependency
+    let suggestionsToShow: Term[] = [];
+
+    // Check if the current value matches the selected term
+    const selectedTerm = currentSelectedTermId
+      ? terms.find((term) => term.id === currentSelectedTermId)
+      : null;
+    const isShowingSelectedTerm =
+      selectedTerm && value.toLowerCase() === selectedTerm.term.toLowerCase();
+
+    if (value.trim() === "" || isShowingSelectedTerm) {
+      // If no search value OR showing the selected term, show related terms
+      if (currentSelectedTermId && selectedTerm?.related) {
+        // Get related terms
+        const relatedTerms = selectedTerm.related
+          .map((relatedId) => terms.find((term) => term.id === relatedId))
+          .filter((term): term is Term => term !== undefined);
+
+        suggestionsToShow = relatedTerms;
+      }
+
+      // If no related terms or no selected term, show default suggestions
+      if (suggestionsToShow.length === 0) {
+        const defaultSuggestions = [
+          "bussin",
+          "hype",
+          "mogging",
+          "cap",
+          "bet",
+          "fire",
+        ];
+        suggestionsToShow = defaultSuggestions
+          .map((id) => terms.find((term) => term.id === id))
+          .filter((term): term is Term => term !== undefined);
+      }
+    } else {
+      // If there's a different search value, show search results
+      const filteredTerms = searchTerms(value);
+      suggestionsToShow = filteredTerms.filter(
+        (term) => term.id !== currentSelectedTermId
+      );
+      // Sort alphabetically by term name
+      suggestionsToShow = suggestionsToShow.sort((a, b) =>
+        a.term.toLowerCase().localeCompare(b.term.toLowerCase())
+      );
+    }
+
+    setSuggestions(suggestionsToShow.slice(0, 12)); // Limit to 12 suggestions
+  }, [value, currentSelectedTermId]);
 
   // Create animations for pills when suggestions change
   useEffect(() => {
+    // Only animate if there's a value (not when clearing)
+    const shouldAnimate = value.trim().length > 0;
+
+    if (!shouldAnimate) {
+      // When clearing, don't update animations if we already have the right number
+      // This prevents unnecessary re-renders when clearing
+      if (pillAnimations.length === suggestions.length) {
+        return;
+      }
+      // Only create new animations if the count changed
+      const staticAnimations = suggestions.map(() => new Animated.Value(1));
+      setPillAnimations(staticAnimations);
+      return;
+    }
+
+    // Create new animations for the entire array and animate them in
     const newAnimations = suggestions.map(() => new Animated.Value(0));
     setPillAnimations(newAnimations);
 
-    // Animate pills in with stagger
+    // Animate all pills in with stagger
     newAnimations.forEach((animation, index) => {
       Animated.timing(animation, {
         toValue: 1,
-        duration: 200,
-        delay: index * 50, // 80ms stagger for subtle overlap
+        duration: animationConfig.duration,
+        delay: index * animationConfig.delay,
+        easing: animationConfig.easing,
         useNativeDriver: true,
       }).start();
     });
-  }, [suggestions.length]);
+  }, [suggestions, currentSelectedTermId, animationConfig, value]);
 
   const handleTextChange = (text: string) => {
     if (controlledValue !== undefined) {
@@ -88,11 +154,12 @@ export const SearchField: React.FC<SearchFieldProps> = ({
 
   const handleSuggestionPress = (term: Term) => {
     // Add haptic feedback
-    Haptics.selectionAsync(); // The "click" when selecting
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // The "thud" when confirming
+    Haptics.selectionAsync();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const termText = term.term;
 
+    // Update the search field with the selected term
     if (controlledValue !== undefined) {
       // Controlled mode - call parent's onChangeText
       onChangeText?.(termText);
@@ -104,7 +171,7 @@ export const SearchField: React.FC<SearchFieldProps> = ({
     // Set the selected term ID to filter it out
     setSelectedTermId(term.id);
 
-    // Notify parent of term selection
+    // Call the parent's onTermSelect callback
     onTermSelect?.(term);
   };
 
@@ -146,10 +213,10 @@ export const SearchField: React.FC<SearchFieldProps> = ({
               onPress={handleClear}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons
-                name="close-circle"
+              <XCircleIcon
+                color={tokens.color.text.primary}
+                weight="duotone"
                 size={24}
-                color="rgba(120, 120, 128, 0.8)"
               />
             </TouchableOpacity>
           )}
@@ -182,17 +249,13 @@ export const SearchField: React.FC<SearchFieldProps> = ({
                       outputRange: [0.8, 1],
                     }),
                   },
-                  {
-                    translateY: animation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [10, 0],
-                    }),
-                  },
                 ],
               };
 
+              // Check if this is the selected term
+              const isSelected = term.id === currentSelectedTermId;
+
               return (
-                // chips
                 <AnimatedBlurView
                   key={term.id}
                   style={{
@@ -200,18 +263,17 @@ export const SearchField: React.FC<SearchFieldProps> = ({
                     overflow: "hidden",
                     borderRadius: 8,
                     padding: 4,
-                    filter: "blur(2px)",
-                    backdropFilter: "blur(2px)",
                     ...animatedStyle,
                   }}
-                  intensity={50}
+                  intensity={8}
                   tint="dark"
                 >
                   <TouchableOpacity
-                    style={styles.suggestionPill}
                     onPress={() => handleSuggestionPress(term)}
+                    style={styles.pillButton}
+                    activeOpacity={0.7}
                   >
-                    <Text style={styles.suggestionText}>{term.term}</Text>
+                    <StyledText variant="action">{term.term}</StyledText>
                   </TouchableOpacity>
                 </AnimatedBlurView>
               );
@@ -271,7 +333,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingRight: 32, // Extra padding to account for the bleed
   },
-  suggestionPill: {
+  pillButton: {
     // backgroundColor: "rgba(120, 120, 128, 0.24)",
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -280,13 +342,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0, // Prevent pills from shrinking
   },
-  suggestionText: {
+  pillText: {
     fontSize: 15,
     fontFamily: "System",
     fontWeight: "400",
     color: "rgba(255, 255, 255, 0.7)",
     lineHeight: 20,
     letterSpacing: -0.23,
+  },
+  textBlur: {
+    borderRadius: 4,
+    padding: 2,
   },
   clearButton: {
     alignItems: "center",

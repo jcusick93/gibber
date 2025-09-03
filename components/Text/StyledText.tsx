@@ -15,7 +15,7 @@ interface StyledTextProps extends TextProps {
 
 export const StyledText: React.FC<StyledTextProps> = ({
   children,
-  variant = "body-large",
+  variant = "bodyLarge",
   ...rest
 }) => {
   const variantStyle = variant
@@ -61,5 +61,11 @@ const variantStyles = StyleSheet.create({
     fontSize: tokens.text.bodyLarge.fontSize,
     fontFamily: tokens.text.bodyLarge.fontFamily,
     lineHeight: tokens.text.bodyLarge.lineHeight,
+  },
+  action: {
+    color: tokens.color.text.primary,
+    fontSize: tokens.text.action.fontSize,
+    fontFamily: tokens.text.action.fontFamily,
+    lineHeight: tokens.text.action.lineHeight,
   },
 });
